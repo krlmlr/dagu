@@ -56,6 +56,13 @@ var (
 	ErrInvalidWebhookID = errors.New("invalid webhook ID")
 	// ErrInvalidWebhookTokenHash is returned when the webhook token hash is empty.
 	ErrInvalidWebhookTokenHash = errors.New("invalid webhook token hash")
+	// ErrInvalidWebhookSignature is returned when the inbound HMAC signature
+	// header is missing, malformed, or does not match the locally computed
+	// HMAC of the request body.
+	ErrInvalidWebhookSignature = errors.New("invalid webhook signature")
+	// ErrUnsupportedWebhookHMACAlgorithm is returned when the configured
+	// HMAC algorithm is not supported by the verifier.
+	ErrUnsupportedWebhookHMACAlgorithm = errors.New("unsupported webhook HMAC algorithm")
 )
 
 // UserStore defines the interface for user persistence operations.
