@@ -2976,6 +2976,8 @@ export interface components {
             input?: string[];
             /** @description Subset of input fields that must be provided */
             required?: string[];
+            /** @description Optional step name to restart from when the approver pushes the step back. Must reference the step itself or an upstream dependency. */
+            rewindTo?: string;
         };
         /** @description Generic error response object */
         Error: {
@@ -3340,6 +3342,10 @@ export interface components {
             params?: string[];
             /** @description Ordered parameter definitions derived from DAG params for typed UI rendering and validation */
             paramDefs?: components["schemas"]["ParamDef"][];
+            /** @description Resolved JSON Schema for schema-backed DAG params when safe for direct UI form rendering */
+            paramSchema?: {
+                [key: string]: unknown;
+            };
             /** @description Default parameter values in JSON format if not specified at DAG-run creation */
             defaultParams?: string;
             /** @description List of labels for categorizing and filtering DAGs */
@@ -3606,6 +3612,21 @@ export interface components {
             approvalIteration?: number;
             /** @description Key-value inputs from the last push-back, injected as environment variables during re-execution */
             pushBackInputs?: {
+                [key: string]: string;
+            };
+            /** @description Chronological push-back history for this step */
+            pushBackHistory?: components["schemas"]["PushBackHistoryEntry"][];
+        };
+        /** @description One push-back event recorded for an approval step */
+        PushBackHistoryEntry: {
+            /** @description Push-back iteration number */
+            iteration: number;
+            /** @description Authenticated user who pushed the step back */
+            by?: string;
+            /** @description RFC3339 timestamp when the push-back was recorded */
+            at?: string;
+            /** @description Inputs provided for this push-back event */
+            inputs?: {
                 [key: string]: string;
             };
         };
