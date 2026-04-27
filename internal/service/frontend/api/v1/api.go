@@ -115,6 +115,8 @@ type AuthService interface {
 	RegenerateWebhookToken(ctx context.Context, dagName string) (*authservice.CreateWebhookResult, error)
 	ToggleWebhook(ctx context.Context, dagName string, enabled bool) (*auth.Webhook, error)
 	ValidateWebhookToken(ctx context.Context, dagName, token string) (*auth.Webhook, error)
+	SetWebhookHMAC(ctx context.Context, dagName string, cfg authservice.HMACConfig) (*auth.Webhook, error)
+	ClearWebhookHMAC(ctx context.Context, dagName string) (*auth.Webhook, error)
 	HasWebhookStore() bool
 	// Setup
 	CountUsers(ctx context.Context) (int64, error)

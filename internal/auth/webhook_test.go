@@ -49,15 +49,19 @@ func TestWebhook_StorageRoundtrip(t *testing.T) {
 	lastUsed := now.Add(-time.Hour)
 
 	original := &Webhook{
-		ID:          "id",
-		DAGName:     "dag.yaml",
-		TokenHash:   "hash",
-		TokenPrefix: "dagu_wh_",
-		Enabled:     false,
-		CreatedAt:   now,
-		UpdatedAt:   now,
-		CreatedBy:   "creator",
-		LastUsedAt:  &lastUsed,
+		ID:            "id",
+		DAGName:       "dag.yaml",
+		TokenHash:     "hash",
+		TokenPrefix:   "dagu_wh_",
+		Enabled:       false,
+		CreatedAt:     now,
+		UpdatedAt:     now,
+		CreatedBy:     "creator",
+		LastUsedAt:    &lastUsed,
+		HMACSecret:    "hmac-secret",
+		HMACAlgorithm: "sha256",
+		HMACHeader:    "X-Hub-Signature-256",
+		HMACPrefix:    "sha256=",
 	}
 
 	storage := original.ToStorage()
@@ -70,6 +74,27 @@ func TestWebhook_StorageRoundtrip(t *testing.T) {
 	assert.Equal(t, original.Enabled, recovered.Enabled)
 	assert.Equal(t, original.CreatedBy, recovered.CreatedBy)
 	assert.Equal(t, *original.LastUsedAt, *recovered.LastUsedAt)
+	assert.Equal(t, original.HMACSecret, recovered.HMACSecret)
+	assert.Equal(t, original.HMACAlgorithm, recovered.HMACAlgorithm)
+	assert.Equal(t, original.HMACHeader, recovered.HMACHeader)
+	assert.Equal(t, original.HMACPrefix, recovered.HMACPrefix)
+}
+
+func TestWebhook_JSONExcludesHMACSecret(t *testing.T) {
+	t.Parallel()
+	wh := &Webhook{
+		ID:         "id",
+		DAGName:    "dag.yaml",
+		HMACSecret: "super-secret-hmac-key",
+		HMACHeader: "X-Hub-Signature-256",
+	}
+
+	data, err := json.Marshal(wh)
+	require.NoError(t, err)
+	assert.NotContains(t, string(data), "super-secret-hmac-key")
+	assert.NotContains(t, string(data), "hmacSecret")
+	// Header config is OK to expose.
+	assert.Contains(t, string(data), "X-Hub-Signature-256")
 }
 
 func TestWebhook_StorageRoundtripNilLastUsed(t *testing.T) {

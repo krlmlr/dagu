@@ -33,7 +33,19 @@ var (
 	ErrInvalidWebhookToken  = errors.New("invalid webhook token")
 	ErrWebhookNotConfigured = errors.New("webhook management is not configured")
 	ErrWebhookDisabled      = errors.New("webhook is disabled")
-	ErrUserDisabled         = errors.New("your account has been disabled, contact administrator")
+	// ErrInvalidHMACSecret is returned when an HMAC secret is set with a
+	// length outside the allowed bounds (16..4096 bytes).
+	ErrInvalidHMACSecret = errors.New("HMAC secret must be between 16 and 4096 bytes")
+	// ErrInvalidHMACAlgorithm is returned when the configured HMAC algorithm
+	// is not supported.
+	ErrInvalidHMACAlgorithm = errors.New("HMAC algorithm not supported")
+	// ErrInvalidHMACHeader is returned when the configured HMAC header name
+	// is empty, too long, or contains characters outside [A-Za-z0-9-].
+	ErrInvalidHMACHeader = errors.New("HMAC header name must match [A-Za-z0-9-]+ and be 1..128 chars")
+	// ErrInvalidHMACPrefix is returned when the configured HMAC prefix is
+	// longer than 32 characters.
+	ErrInvalidHMACPrefix = errors.New("HMAC prefix must be at most 32 chars")
+	ErrUserDisabled      = errors.New("your account has been disabled, contact administrator")
 )
 
 const (

@@ -4065,6 +4065,84 @@ paths:
               schema:
                 $ref: "#/components/schemas/Error"
 
+  /dags/{fileName}/webhook/hmac:
+    put:
+      summary: "Set or replace HMAC verification configuration"
+      description: |
+        Configures HMAC-SHA256 signature verification for the webhook. Once
+        configured, inbound deliveries must include a valid signature header
+        in addition to the bearer token (defense-in-depth). Replaces any
+        existing configuration. Developer, manager, or admin only.
+      operationId: "setDAGWebhookHMAC"
+      tags:
+        - "webhooks"
+      parameters:
+        - $ref: "#/components/parameters/RemoteNode"
+        - $ref: "#/components/parameters/DAGFileName"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/WebhookHMACSetRequest"
+      responses:
+        "200":
+          description: "HMAC configuration set"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WebhookDetails"
+        "400":
+          description: "Invalid HMAC configuration (e.g. secret too short, malformed header)"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          description: "No webhook configured for this DAG"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        default:
+          description: "Unexpected error"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+    delete:
+      summary: "Clear HMAC verification configuration"
+      description: |
+        Removes the HMAC verification configuration from the webhook. Future
+        deliveries will only be authenticated by the bearer token.
+        Developer, manager, or admin only.
+      operationId: "clearDAGWebhookHMAC"
+      tags:
+        - "webhooks"
+      parameters:
+        - $ref: "#/components/parameters/RemoteNode"
+        - $ref: "#/components/parameters/DAGFileName"
+      responses:
+        "200":
+          description: "HMAC configuration cleared"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WebhookDetails"
+        "404":
+          description: "No webhook configured for this DAG"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        default:
+          description: "Unexpected error"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
   /dags/{fileName}/webhook/toggle:
     post:
       summary: "Toggle webhook enabled state"
@@ -7785,6 +7863,7 @@ components:
         - dagName
         - tokenPrefix
         - enabled
+        - hmacEnabled
         - createdAt
         - updatedAt
       properties:
@@ -7801,6 +7880,11 @@ components:
         enabled:
           type: boolean
           description: "Whether the webhook is active"
+        hmacEnabled:
+          type: boolean
+          description: "Whether HMAC-SHA256 verification is configured for this webhook"
+        hmac:
+          $ref: "#/components/schemas/WebhookHMACView"
         createdAt:
           type: string
           format: date-time
@@ -7816,6 +7900,65 @@ components:
           type: string
           format: date-time
           description: "When the webhook was last triggered"
+
+    WebhookHMACView:
+      type: object
+      description: |
+        Public view of the HMAC verification settings for a webhook.
+        Never includes the secret. Returned alongside WebhookDetails when HMAC
+        is configured.
+      required:
+        - algorithm
+        - header
+        - prefix
+      properties:
+        algorithm:
+          type: string
+          description: "HMAC algorithm (currently only sha256)"
+          example: "sha256"
+        header:
+          type: string
+          description: "HTTP header to read the signature from"
+          example: "X-Hub-Signature-256"
+        prefix:
+          type: string
+          description: "Prefix stripped from the header value before hex decoding"
+          example: "sha256="
+
+    WebhookHMACSetRequest:
+      type: object
+      description: |
+        Request to set or replace the HMAC verification configuration for a
+        webhook. Replaces any existing configuration. The secret is required;
+        algorithm/header/prefix fall back to platform defaults when omitted.
+      required:
+        - secret
+      properties:
+        secret:
+          type: string
+          format: password
+          minLength: 16
+          maxLength: 4096
+          description: |
+            Symmetric secret used to compute the expected HMAC. Stored on disk;
+            never returned by any API. Choose a high-entropy value (>=16 bytes).
+        algorithm:
+          type: string
+          enum: ["sha256"]
+          description: "HMAC algorithm. Defaults to sha256 when omitted."
+        header:
+          type: string
+          maxLength: 128
+          pattern: "^[A-Za-z0-9-]+$"
+          description: |
+            HTTP header to read the signature from. Defaults to
+            'X-Hub-Signature-256' (GitHub-compatible) when omitted.
+        prefix:
+          type: string
+          maxLength: 32
+          description: |
+            Prefix stripped from the header value before hex decoding. Defaults
+            to 'sha256=' when omitted.
 
     WebhookCreateResponse:
       type: object

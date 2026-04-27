@@ -316,6 +316,23 @@ func (a *API) TriggerWebhook(ctx context.Context, request api.TriggerWebhookRequ
 		}
 	}
 
+	// Verify HMAC signature when configured. When the webhook does not have
+	// HMAC configured, this is a no-op. Failures are logged at warn level
+	// and surfaced as 401 without detailing which check failed.
+	if webhook.HMACEnabled() {
+		if err := auth.VerifyWebhookHMAC(webhook, rawHeadersFromContext(ctx), rawBodyFromContext(ctx)); err != nil {
+			logger.Warn(ctx, "Webhook: HMAC verification failed",
+				tag.Name(request.FileName),
+				tag.Error(err),
+			)
+			return nil, &Error{
+				HTTPStatus: http.StatusUnauthorized,
+				Code:       api.ErrorCodeUnauthorized,
+				Message:    "invalid webhook signature",
+			}
+		}
+	}
+
 	// Prepare the WEBHOOK_PAYLOAD parameter
 	payload, err := marshalWebhookPayload(ctx, request.Body)
 	if err != nil {
@@ -427,16 +444,25 @@ func toWebhookDetails(wh *auth.Webhook) api.WebhookDetails {
 		parsedID = uuid.Nil
 	}
 
-	return api.WebhookDetails{
+	details := api.WebhookDetails{
 		Id:          openapitypes.UUID(parsedID),
 		DagName:     wh.DAGName,
 		TokenPrefix: wh.TokenPrefix,
 		Enabled:     wh.Enabled,
+		HmacEnabled: wh.HMACEnabled(),
 		CreatedAt:   wh.CreatedAt,
 		UpdatedAt:   wh.UpdatedAt,
 		CreatedBy:   ptrOf(wh.CreatedBy),
 		LastUsedAt:  wh.LastUsedAt,
 	}
+	if wh.HMACEnabled() {
+		details.Hmac = &api.WebhookHMACView{
+			Algorithm: wh.HMACAlgorithmOrDefault(),
+			Header:    wh.HMACHeaderOrDefault(),
+			Prefix:    wh.HMACPrefixOrDefault(),
+		}
+	}
+	return details
 }
 
 // getCreatorID extracts the user ID from context or returns a default value.

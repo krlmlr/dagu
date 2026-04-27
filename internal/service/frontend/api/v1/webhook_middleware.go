@@ -17,6 +17,12 @@ type contextKey string
 const (
 	// rawBodyContextKey stores the raw request body bytes in context.
 	rawBodyContextKey contextKey = "webhook_raw_body"
+	// rawHeadersContextKey stores the inbound request headers in context.
+	// We capture them in the middleware (alongside the raw body) so the
+	// strict handler — which only sees the OpenAPI-declared parameters —
+	// can still read provider-specific signature headers like
+	// X-Hub-Signature-256.
+	rawHeadersContextKey contextKey = "webhook_raw_headers"
 )
 
 // WebhookRawBodyMiddleware is a chi middleware that captures the raw request
@@ -50,6 +56,7 @@ func WebhookRawBodyMiddleware() func(http.Handler) http.Handler {
 			r.Body = io.NopCloser(bytes.NewReader(rawBody))
 
 			ctx := context.WithValue(r.Context(), rawBodyContextKey, rawBody)
+			ctx = context.WithValue(ctx, rawHeadersContextKey, r.Header.Clone())
 			next.ServeHTTP(w, r.WithContext(ctx))
 		})
 	}
@@ -60,6 +67,13 @@ func WebhookRawBodyMiddleware() func(http.Handler) http.Handler {
 func rawBodyFromContext(ctx context.Context) []byte {
 	raw, _ := ctx.Value(rawBodyContextKey).([]byte)
 	return raw
+}
+
+// rawHeadersFromContext retrieves the inbound HTTP headers stored by
+// WebhookRawBodyMiddleware. Returns nil if not present.
+func rawHeadersFromContext(ctx context.Context) http.Header {
+	h, _ := ctx.Value(rawHeadersContextKey).(http.Header)
+	return h
 }
 
 // withRawBody returns a context with the raw body attached (for testing).
